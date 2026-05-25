@@ -16,7 +16,7 @@ Then visit `http://localhost:4173`.
 ## Prototype Behavior
 
 - The memory stream shows only real submitted memories; if none exist, it shows an empty state.
-- The upload form saves new memories to Supabase when the table and storage bucket are configured.
+- The upload form saves new memories directly to the configured Supabase project.
 - Media files upload to the `lulu-memories` Supabase Storage bucket.
 - Uploaded images also generate a lightweight transparent PNG cutout specimen in the browser and upload it to Storage.
 - If Supabase is unavailable, the submitted memory is saved in the current browser as a fallback.

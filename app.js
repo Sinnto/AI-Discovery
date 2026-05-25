@@ -16,11 +16,11 @@ const gradients = [
   "linear-gradient(135deg, #1f2222, #0d0f11 48%, #6e6b60)",
 ];
 
-const SUPABASE_URL = "https://dbtangzhendong04-1.supabase.database.sankuai.com";
+const SUPABASE_URL = "https://apukbofvnfisrdqjfjrf.supabase.co";
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGF" +
-  "iYXNlIiwiaWF0IjoxNzQ2OTc5MjAwLCJleHAiOjE5MDQ3NDU2MDB9.snofD399CWaUaU-MZi8c" +
-  "WJXgamG48-FVwpVxabLmpa4";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im" +
+  "FwdWtib2Z2bmZpc3JkcWpmanJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODAyMTgsIm" +
+  "V4cCI6MjA5NTI1NjIxOH0.9Kg9JquOZAJKz5zbC3zikF4E0NRWvEw2fE0GPKUSu0g";
 const SUPABASE_BUCKET = "lulu-memories";
 const LOCAL_STORAGE_KEY = "lulu-memory-film.saved-memories.v2";
 
@@ -200,6 +200,38 @@ function mapRemoteMemory(row) {
   };
 }
 
+async function fetchRemoteMemories() {
+  const url = `${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=100`;
+  const response = await fetch(url, {
+    headers: supabaseHeaders({ Accept: "application/json" }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()).map(mapRemoteMemory);
+}
+
+async function saveRemoteMemory(memory, file, cutoutDataUrl) {
+  const [uploaded, cutout] = await Promise.all([uploadMedia(file), uploadCutout(cutoutDataUrl)]);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/memories?select=*`, {
+    method: "POST",
+    headers: supabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    }),
+    body: JSON.stringify(toRemotePayload({ ...memory, ...uploaded, ...cutout })),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const rows = await response.json();
+  return mapRemoteMemory(rows[0]);
+}
+
 function toRemotePayload(memory) {
   return {
     title: memory.title,
@@ -216,37 +248,6 @@ function toRemotePayload(memory) {
     specimens: memory.specimens,
     gradient: memory.gradient,
   };
-}
-
-async function fetchRemoteMemories() {
-  const url = `${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=100`;
-  const response = await fetch(url, {
-    headers: supabaseHeaders({ Accept: "application/json" }),
-  });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return (await response.json()).map(mapRemoteMemory);
-}
-
-async function insertRemoteMemory(memory) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/memories?select=*`, {
-    method: "POST",
-    headers: supabaseHeaders({
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    }),
-    body: JSON.stringify(toRemotePayload(memory)),
-  });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  const rows = await response.json();
-  return mapRemoteMemory(rows[0]);
 }
 
 async function uploadObject({ body, contentType, extension, folder }) {
@@ -427,8 +428,7 @@ memoryForm.addEventListener("submit", async (event) => {
   };
 
   try {
-    const [uploaded, cutout] = await Promise.all([uploadMedia(file), uploadCutout(cutoutDataUrl)]);
-    const remoteMemory = await insertRemoteMemory({ ...newMemory, ...uploaded, ...cutout });
+    const remoteMemory = await saveRemoteMemory(newMemory, file, cutoutDataUrl);
     savedMemories = [remoteMemory, ...savedMemories];
     memories = [remoteMemory, ...memories];
     window.localStorage.removeItem(LOCAL_STORAGE_KEY);
