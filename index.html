@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>For Lulu, In Frames</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="topbar" aria-label="Site header">
+      <a class="brand" href="#home">For Lulu</a>
+      <nav class="nav-actions" aria-label="Primary navigation">
+        <a href="#film">Memory film</a>
+        <button class="ghost-button" data-open-upload type="button">Add memory</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="home" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="date-line">A farewell film from the people who shared the days.</p>
+          <h1 id="hero-title"><span>For&nbsp;Lulu,</span><br /><span>In&nbsp;Frames</span></h1>
+          <p class="hero-poem">Some people leave a desk. Some leave a light.</p>
+          <div class="hero-actions">
+            <a class="primary-button" href="#film">Enter memory film</a>
+            <button class="secondary-button" data-open-upload type="button">Add a memory</button>
+          </div>
+        </div>
+
+        <div class="hero-stage" aria-label="Memory film preview">
+          <div class="film-reel">
+            <article class="preview-frame frame-one">
+              <span class="frame-index">01</span>
+              <div>
+                <strong>The Friday Light</strong>
+                <p>Late meetings, quiet jokes, one cup that never left the table.</p>
+              </div>
+            </article>
+            <article class="preview-frame frame-two">
+              <span class="frame-index">02</span>
+              <div>
+                <strong>Before Launch</strong>
+                <p>Whiteboard arrows, snack wrappers, and your calm voice.</p>
+              </div>
+            </article>
+          </div>
+          <div class="specimen cup" aria-hidden="true"><span></span>Cup</div>
+          <div class="specimen badge" aria-hidden="true"><span></span>Badge</div>
+          <div class="specimen note" aria-hidden="true"><span></span>Note</div>
+        </div>
+      </section>
+
+      <section class="film-section" id="film" aria-labelledby="film-title">
+        <div class="section-heading">
+          <p>Memory film</p>
+          <h2 id="film-title">A quiet sequence of shared days.</h2>
+        </div>
+        <div class="film-track" id="memoryTrack" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <dialog class="upload-dialog" id="uploadDialog" aria-labelledby="upload-title">
+      <form id="memoryForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p>Add to the film</p>
+            <h2 id="upload-title">Leave one frame for lulu</h2>
+          </div>
+          <button class="icon-button" data-close-upload type="button" aria-label="Close upload dialog">×</button>
+        </div>
+
+        <label>
+          Your name
+          <input name="author" autocomplete="name" required placeholder="e.g. Yuki" />
+        </label>
+        <label>
+          Memory title
+          <input name="title" required placeholder="e.g. The night before launch" />
+        </label>
+        <label>
+          Message
+          <textarea name="message" required rows="5" placeholder="Write one specific thing you want lulu to remember."></textarea>
+        </label>
+        <div class="form-grid">
+          <label>
+            Tag
+            <select name="tag">
+              <option>Daily moment</option>
+              <option>Project</option>
+              <option>Lunch</option>
+              <option>Celebration</option>
+              <option>Overtime</option>
+              <option>Travel</option>
+            </select>
+          </label>
+          <label>
+            Photo or video
+            <input name="media" type="file" accept="image/*,video/*" />
+          </label>
+        </div>
+        <button class="primary-button full" type="submit">Generate memory frame</button>
+      </form>
+    </dialog>
+
+    <div class="processing" id="processing" hidden aria-live="assertive" aria-label="AI processing status">
+      <div class="processing-card">
+        <p>Curating your frame</p>
+        <h2 id="processingTitle">Reading the scene</h2>
+        <div class="progress-rail"><span id="progressBar"></span></div>
+        <ol id="processingSteps">
+          <li class="active">Reading the scene</li>
+          <li>Cutting out memory specimens</li>
+          <li>Placing it into the film</li>
+        </ol>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
