@@ -594,6 +594,26 @@ select:focus {
   color: var(--text);
 }
 
+.save-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 45;
+  max-width: min(360px, calc(100vw - 32px));
+  border: 1px solid rgba(217, 197, 154, 0.32);
+  border-radius: 999px;
+  padding: 12px 16px;
+  color: rgba(244, 241, 234, .86);
+  background: rgba(17, 19, 22, .9);
+  box-shadow: 0 18px 50px rgba(0,0,0,.36);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+}
+
+.save-toast[hidden] {
+  display: none;
+}
+
 @keyframes drift {
   0%, 100% {
     transform: translateY(0) rotate(-4deg);
@@ -659,6 +679,11 @@ select:focus {
 
   .film-section {
     padding: 68px 18px 86px;
+  }
+
+  .save-toast {
+    right: 16px;
+    bottom: 16px;
   }
 
   .memory-frame {

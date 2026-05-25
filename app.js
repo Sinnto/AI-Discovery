@@ -16,7 +16,15 @@ const gradients = [
   "linear-gradient(135deg, #1f2222, #0d0f11 48%, #6e6b60)",
 ];
 
-let memories = [
+const SUPABASE_URL = "https://dbtangzhendong04-1.supabase.database.sankuai.com";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGF" +
+  "iYXNlIiwiaWF0IjoxNzQ2OTc5MjAwLCJleHAiOjE5MDQ3NDU2MDB9.snofD399CWaUaU-MZi8c" +
+  "WJXgamG48-FVwpVxabLmpa4";
+const SUPABASE_BUCKET = "lulu-memories";
+const LOCAL_STORAGE_KEY = "lulu-memory-film.saved-memories.v2";
+
+const seedMemories = [
   {
     title: "The Friday Light",
     author: "Mia",
@@ -64,6 +72,9 @@ let memories = [
   },
 ];
 
+let savedMemories = loadLocalMemories();
+let memories = [...savedMemories, ...seedMemories];
+
 const memoryTrack = document.querySelector("#memoryTrack");
 const uploadDialog = document.querySelector("#uploadDialog");
 const memoryForm = document.querySelector("#memoryForm");
@@ -71,6 +82,7 @@ const processing = document.querySelector("#processing");
 const processingTitle = document.querySelector("#processingTitle");
 const progressBar = document.querySelector("#progressBar");
 const processingSteps = Array.from(document.querySelectorAll("#processingSteps li"));
+const saveToast = document.querySelector("#saveToast");
 
 function renderMemories() {
   memoryTrack.innerHTML = memories.map((memory, index) => memoryTemplate(memory, index)).join("");
@@ -140,6 +152,160 @@ function randomSpecimens(title, message) {
   return specimenSets[Math.floor(Math.random() * specimenSets.length)];
 }
 
+function loadLocalMemories() {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isValidMemory) : [];
+  } catch {
+    return [];
+  }
+}
+
+function isValidMemory(memory) {
+  return (
+    memory &&
+    typeof memory.title === "string" &&
+    typeof memory.author === "string" &&
+    typeof memory.message === "string" &&
+    typeof memory.tag === "string"
+  );
+}
+
+function persistLocalMemories() {
+  window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedMemories));
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function showSaveToast(message) {
+  saveToast.textContent = message;
+  saveToast.hidden = false;
+  window.clearTimeout(showSaveToast.timeoutId);
+  showSaveToast.timeoutId = window.setTimeout(() => {
+    saveToast.hidden = true;
+  }, 3200);
+}
+
+function supabaseHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    ...extra,
+  };
+}
+
+function mapRemoteMemory(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    author: row.author,
+    tag: row.tag,
+    message: row.message,
+    mediaUrl: row.media_url || "",
+    mediaType: row.media_type || "",
+    mediaPath: row.media_path || "",
+    mediaLabel: row.media_label || "cloud memory frame",
+    specimens: Array.isArray(row.specimens) && row.specimens.length ? row.specimens : randomSpecimens(row.title, row.message),
+    gradient: row.gradient || gradients[0],
+    createdAt: row.created_at,
+    source: "cloud",
+  };
+}
+
+function toRemotePayload(memory) {
+  return {
+    title: memory.title,
+    author: memory.author,
+    tag: memory.tag,
+    message: memory.message,
+    media_url: memory.mediaUrl || null,
+    media_type: memory.mediaType || null,
+    media_path: memory.mediaPath || null,
+    media_label: memory.mediaLabel,
+    specimens: memory.specimens,
+    gradient: memory.gradient,
+  };
+}
+
+async function fetchRemoteMemories() {
+  const url = `${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=100`;
+  const response = await fetch(url, {
+    headers: supabaseHeaders({ Accept: "application/json" }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()).map(mapRemoteMemory);
+}
+
+async function insertRemoteMemory(memory) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/memories?select=*`, {
+    method: "POST",
+    headers: supabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    }),
+    body: JSON.stringify(toRemotePayload(memory)),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const rows = await response.json();
+  return mapRemoteMemory(rows[0]);
+}
+
+async function uploadMedia(file) {
+  if (!file || file.size === 0) return { mediaUrl: "", mediaPath: "", mediaType: "" };
+
+  const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "bin";
+  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+  const mediaPath = `memories/${safeName}`;
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${mediaPath}`, {
+    method: "POST",
+    headers: supabaseHeaders({
+      "Content-Type": file.type || "application/octet-stream",
+      "x-upsert": "false",
+    }),
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return {
+    mediaUrl: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${mediaPath}`,
+    mediaPath,
+    mediaType: file.type || "application/octet-stream",
+  };
+}
+
+async function refreshRemoteMemories() {
+  try {
+    const remoteMemories = await fetchRemoteMemories();
+    savedMemories = remoteMemories;
+    window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+    memories = [...savedMemories, ...seedMemories];
+    renderMemories();
+    showSaveToast("Cloud memories loaded.");
+  } catch {
+    showSaveToast("Supabase is not ready yet. Showing local memories.");
+  }
+}
+
 async function showProcessing() {
   const titles = ["Reading the scene", "Cutting out memory specimens", "Placing it into the film"];
   processing.hidden = false;
@@ -175,26 +341,46 @@ memoryForm.addEventListener("submit", async (event) => {
   closeUpload();
   await showProcessing();
 
-  const mediaUrl = file && file.size > 0 ? URL.createObjectURL(file) : "";
-  const mediaType = file && file.size > 0 ? file.type : "";
+  const hasMedia = file && file.size > 0;
+  const previewUrl = hasMedia ? URL.createObjectURL(file) : "";
+  let saveMessage = "Saved to Supabase. Everyone will see it after refresh.";
 
-  memories = [
-    {
-      title,
-      author,
-      tag,
-      message,
-      mediaUrl,
-      mediaType,
-      mediaLabel: "newly added frame, waiting to become a memory",
-      specimens: randomSpecimens(title, message),
-      gradient: gradients[Math.floor(Math.random() * gradients.length)],
-    },
-    ...memories,
-  ];
+  const newMemory = {
+    title,
+    author,
+    tag,
+    message,
+    mediaUrl: previewUrl,
+    mediaType: hasMedia ? file.type : "",
+    mediaPath: "",
+    mediaLabel: "newly added frame, waiting to become a memory",
+    specimens: randomSpecimens(title, message),
+    gradient: gradients[Math.floor(Math.random() * gradients.length)],
+  };
+
+  try {
+    const uploaded = await uploadMedia(file);
+    const remoteMemory = await insertRemoteMemory({ ...newMemory, ...uploaded });
+    savedMemories = [remoteMemory, ...savedMemories];
+    memories = [remoteMemory, ...memories];
+    window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+  } catch {
+    if (hasMedia) {
+      try {
+        newMemory.mediaUrl = await fileToDataUrl(file);
+      } catch {
+        newMemory.mediaUrl = "";
+      }
+    }
+    savedMemories = [newMemory, ...savedMemories];
+    memories = [newMemory, ...memories];
+    persistLocalMemories();
+    saveMessage = "Cloud save failed. Saved in this browser as a fallback.";
+  }
 
   renderMemories();
   memoryForm.reset();
+  showSaveToast(saveMessage);
   document.querySelector("#film").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -216,3 +402,4 @@ uploadDialog.addEventListener("click", (event) => {
 });
 
 renderMemories();
+refreshRemoteMemories();
