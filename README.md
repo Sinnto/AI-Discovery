@@ -15,9 +15,10 @@ Then visit `http://localhost:4173`.
 
 ## Prototype Behavior
 
-- The memory stream is pre-seeded with five example memories.
+- The memory stream shows only real submitted memories; if none exist, it shows an empty state.
 - The upload form saves new memories to Supabase when the table and storage bucket are configured.
 - Media files upload to the `lulu-memories` Supabase Storage bucket.
+- Uploaded images also generate a lightweight transparent PNG cutout specimen in the browser and upload it to Storage.
 - If Supabase is unavailable, the submitted memory is saved in the current browser as a fallback.
 - The AI cutout pipeline is simulated through a short processing overlay and generated specimen labels.
 
@@ -31,6 +32,8 @@ The frontend expects:
 - Public storage bucket: `lulu-memories`
 - Anonymous read and insert policies for the farewell page
 
+Existing Supabase projects should re-run the SQL after updates so the `cutout_url`, `cutout_path`, and `cutout_label` columns are present.
+
 ## Production Notes
 
-The production version should add private sharing, moderation, upload size limits, and a real visual pipeline for scene understanding and transparent object/person cutouts.
+The production version should add private sharing, moderation, upload size limits, and a model-backed visual pipeline for true person/object segmentation. The current cutout is a browser-generated transparent specimen treatment, not semantic segmentation.

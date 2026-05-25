@@ -326,6 +326,36 @@ a {
   gap: 42px;
 }
 
+.empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+  min-height: 300px;
+  padding: clamp(28px, 6vw, 70px);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(217, 197, 154, 0.12), transparent 18rem),
+    linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--champagne);
+  font-size: 12px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.empty-state h3 {
+  max-width: 660px;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(34px, 5vw, 66px);
+  font-weight: 400;
+  line-height: 1;
+}
+
 .memory-frame {
   position: relative;
   display: grid;
@@ -435,6 +465,31 @@ a {
 .author-line {
   margin-top: 28px;
   color: var(--muted);
+}
+
+.cutout-specimen {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+  margin: 28px 0 0;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid rgba(217, 197, 154, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cutout-specimen img {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 26px rgba(0,0,0,.46));
+}
+
+.cutout-specimen figcaption {
+  color: rgba(244, 241, 234, .76);
+  font-size: 13px;
 }
 
 .specimen-row {

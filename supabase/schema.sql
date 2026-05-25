@@ -10,10 +10,17 @@ create table if not exists public.memories (
   media_url text,
   media_type text,
   media_path text,
+  cutout_url text,
+  cutout_path text,
+  cutout_label text,
   media_label text not null default 'cloud memory frame',
   specimens text[] not null default '{}',
   gradient text not null
 );
+
+alter table public.memories add column if not exists cutout_url text;
+alter table public.memories add column if not exists cutout_path text;
+alter table public.memories add column if not exists cutout_label text;
 
 create index if not exists memories_created_at_idx on public.memories (created_at desc);
 
