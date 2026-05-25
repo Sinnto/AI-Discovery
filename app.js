@@ -23,13 +23,22 @@ const SUPABASE_ANON_KEY =
   "V4cCI6MjA5NTI1NjIxOH0.9Kg9JquOZAJKz5zbC3zikF4E0NRWvEw2fE0GPKUSu0g";
 const SUPABASE_BUCKET = "lulu-memories";
 const LOCAL_STORAGE_KEY = "lulu-memory-film.saved-memories.v2";
+const LOCAL_WISHES_KEY = "lulu-memory-film.saved-wishes.v1";
+
+const wishColors = ["cream", "butter", "rose", "blue", "sage"];
+const wishRotations = [-3.5, -2, -1, 1.5, 2.5, 3.2];
 
 let savedMemories = loadLocalMemories();
 let memories = [...savedMemories];
+let savedWishes = loadLocalWishes();
+let wishes = [...savedWishes];
 
 const memoryTrack = document.querySelector("#memoryTrack");
+const wishWall = document.querySelector("#wishWall");
 const uploadDialog = document.querySelector("#uploadDialog");
+const wishDialog = document.querySelector("#wishDialog");
 const memoryForm = document.querySelector("#memoryForm");
+const wishForm = document.querySelector("#wishForm");
 const processing = document.querySelector("#processing");
 const processingTitle = document.querySelector("#processingTitle");
 const progressBar = document.querySelector("#progressBar");
@@ -42,12 +51,26 @@ function renderMemories() {
     : emptyStateTemplate();
 }
 
+function renderWishes() {
+  wishWall.innerHTML = wishes.length ? wishes.map(wishTemplate).join("") : emptyWishTemplate();
+}
+
 function emptyStateTemplate() {
   return `
     <section class="empty-state" aria-label="No memories yet">
       <p>No real memories yet</p>
-      <h3>The film is waiting for its first frame.</h3>
+      <h3>The corridor is waiting for its first real frame.</h3>
       <button class="secondary-button" data-open-upload type="button">Add the first memory</button>
+    </section>
+  `;
+}
+
+function emptyWishTemplate() {
+  return `
+    <section class="empty-state wish-empty" aria-label="No wishes yet">
+      <p>No wishes yet</p>
+      <h3>Pin the first note for lulu's next chapter.</h3>
+      <button class="secondary-button" data-open-wish type="button">Write the first wish</button>
     </section>
   `;
 }
@@ -90,6 +113,19 @@ function cutoutTemplate(memory) {
   `;
 }
 
+function wishTemplate(wish) {
+  const author = wish.author ? `From ${escapeHtml(wish.author)}` : "From someone who will miss you";
+  return `
+    <article class="wish-note ${escapeHtml(wish.color || "cream")}" style="--tilt: ${Number(wish.rotation || 0)}deg">
+      <p>${escapeHtml(wish.message)}</p>
+      <footer>
+        <span>${escapeHtml(author)}</span>
+        <small>${escapeHtml(wish.mood || "Future wish")}</small>
+      </footer>
+    </article>
+  `;
+}
+
 function mediaTemplate(memory) {
   if (memory.mediaType.startsWith("video/")) {
     return `<video src="${memory.mediaUrl}" controls muted playsinline></video>`;
@@ -119,6 +155,18 @@ function closeUpload() {
   uploadDialog.close();
 }
 
+function openWish() {
+  if (typeof wishDialog.showModal === "function") {
+    wishDialog.showModal();
+  } else {
+    wishDialog.setAttribute("open", "");
+  }
+}
+
+function closeWish() {
+  wishDialog.close();
+}
+
 function randomSpecimens(title, message) {
   const text = `${title} ${message}`.toLowerCase();
   if (text.includes("cake") || text.includes("celebrat")) return specimenSets[1];
@@ -139,6 +187,17 @@ function loadLocalMemories() {
   }
 }
 
+function loadLocalWishes() {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_WISHES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isValidWish) : [];
+  } catch {
+    return [];
+  }
+}
+
 function isValidMemory(memory) {
   return (
     memory &&
@@ -149,8 +208,16 @@ function isValidMemory(memory) {
   );
 }
 
+function isValidWish(wish) {
+  return wish && typeof wish.message === "string" && wish.message.trim().length > 0;
+}
+
 function persistLocalMemories() {
   window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedMemories));
+}
+
+function persistLocalWishes() {
+  window.localStorage.setItem(LOCAL_WISHES_KEY, JSON.stringify(savedWishes));
 }
 
 function fileToDataUrl(file) {
@@ -200,6 +267,19 @@ function mapRemoteMemory(row) {
   };
 }
 
+function mapRemoteWish(row) {
+  return {
+    id: row.id,
+    author: row.author || "",
+    message: row.message,
+    mood: row.mood || "",
+    color: row.color || "cream",
+    rotation: row.rotation || 0,
+    createdAt: row.created_at,
+    source: "cloud",
+  };
+}
+
 async function fetchRemoteMemories() {
   const url = `${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=100`;
   const response = await fetch(url, {
@@ -211,6 +291,19 @@ async function fetchRemoteMemories() {
   }
 
   return (await response.json()).map(mapRemoteMemory);
+}
+
+async function fetchRemoteWishes() {
+  const url = `${SUPABASE_URL}/rest/v1/wishes?select=*&order=created_at.desc&limit=120`;
+  const response = await fetch(url, {
+    headers: supabaseHeaders({ Accept: "application/json" }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()).map(mapRemoteWish);
 }
 
 async function saveRemoteMemory(memory, file, cutoutDataUrl) {
@@ -248,6 +341,34 @@ function toRemotePayload(memory) {
     specimens: memory.specimens,
     gradient: memory.gradient,
   };
+}
+
+function toWishPayload(wish) {
+  return {
+    author: wish.author || null,
+    message: wish.message,
+    mood: wish.mood || null,
+    color: wish.color || "cream",
+    rotation: wish.rotation || 0,
+  };
+}
+
+async function saveRemoteWish(wish) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/wishes?select=*`, {
+    method: "POST",
+    headers: supabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    }),
+    body: JSON.stringify(toWishPayload(wish)),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const rows = await response.json();
+  return mapRemoteWish(rows[0]);
 }
 
 async function uploadObject({ body, contentType, extension, folder }) {
@@ -359,15 +480,34 @@ function loadImage(url) {
 }
 
 async function refreshRemoteMemories() {
+  let loadedAny = false;
+
   try {
     const remoteMemories = await fetchRemoteMemories();
     savedMemories = remoteMemories;
     window.localStorage.removeItem(LOCAL_STORAGE_KEY);
     memories = [...savedMemories];
     renderMemories();
-    showSaveToast("Cloud memories loaded.");
+    loadedAny = true;
   } catch {
-    showSaveToast("Supabase is not ready yet. Showing local memories.");
+    // Keep local fallback memories visible if cloud reads fail.
+  }
+
+  try {
+    const remoteWishes = await fetchRemoteWishes();
+    savedWishes = remoteWishes;
+    window.localStorage.removeItem(LOCAL_WISHES_KEY);
+    wishes = [...savedWishes];
+    renderWishes();
+    loadedAny = true;
+  } catch {
+    // The wishes table may not exist until the updated schema is applied.
+  }
+
+  if (loadedAny) {
+    showSaveToast("Cloud content loaded.");
+  } else {
+    showSaveToast("Supabase is not ready yet. Showing local notes.");
   }
 }
 
@@ -401,7 +541,11 @@ memoryForm.addEventListener("submit", async (event) => {
   const author = formData.get("author").trim();
   const tag = formData.get("tag");
 
-  if (!title || !message || !author) return;
+  if (!author) return;
+  if (!title && !message && (!file || file.size === 0)) {
+    showSaveToast("Add a photo, title, or message before saving.");
+    return;
+  }
 
   closeUpload();
   await showProcessing();
@@ -412,10 +556,10 @@ memoryForm.addEventListener("submit", async (event) => {
   let saveMessage = "Saved to Supabase. Everyone will see it after refresh.";
 
   const newMemory = {
-    title,
+    title: title || "A quiet memory",
     author,
     tag,
-    message,
+    message: message || "A photo memory from this shared chapter.",
     mediaUrl: previewUrl,
     mediaType: hasMedia ? file.type : "",
     mediaPath: "",
@@ -452,8 +596,50 @@ memoryForm.addEventListener("submit", async (event) => {
   document.querySelector("#film").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
+wishForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(wishForm);
+  const author = formData.get("author").trim();
+  const message = formData.get("message").trim();
+  const mood = formData.get("mood");
+
+  if (!message) return;
+
+  closeWish();
+  const newWish = {
+    author,
+    message,
+    mood,
+    color: wishColors[wishes.length % wishColors.length],
+    rotation: wishRotations[wishes.length % wishRotations.length],
+  };
+
+  let saveMessage = "Wish pinned to the wall.";
+
+  try {
+    const remoteWish = await saveRemoteWish(newWish);
+    savedWishes = [remoteWish, ...savedWishes];
+    wishes = [remoteWish, ...wishes];
+    window.localStorage.removeItem(LOCAL_WISHES_KEY);
+  } catch {
+    savedWishes = [newWish, ...savedWishes];
+    wishes = [newWish, ...wishes];
+    persistLocalWishes();
+    saveMessage = "Cloud save failed. Wish saved in this browser as a fallback.";
+  }
+
+  renderWishes();
+  wishForm.reset();
+  showSaveToast(saveMessage);
+  document.querySelector("#wishes").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 document.querySelectorAll("[data-open-upload]").forEach((button) => {
   button.addEventListener("click", openUpload);
+});
+
+document.querySelectorAll("[data-open-wish]").forEach((button) => {
+  button.addEventListener("click", openWish);
 });
 
 memoryTrack.addEventListener("click", (event) => {
@@ -462,7 +648,14 @@ memoryTrack.addEventListener("click", (event) => {
   }
 });
 
+wishWall.addEventListener("click", (event) => {
+  if (event.target.closest("[data-open-wish]")) {
+    openWish();
+  }
+});
+
 document.querySelector("[data-close-upload]").addEventListener("click", closeUpload);
+document.querySelector("[data-close-wish]").addEventListener("click", closeWish);
 
 uploadDialog.addEventListener("click", (event) => {
   const rect = uploadDialog.getBoundingClientRect();
@@ -475,5 +668,17 @@ uploadDialog.addEventListener("click", (event) => {
   if (outside) closeUpload();
 });
 
+wishDialog.addEventListener("click", (event) => {
+  const rect = wishDialog.getBoundingClientRect();
+  const outside =
+    event.clientX < rect.left ||
+    event.clientX > rect.right ||
+    event.clientY < rect.top ||
+    event.clientY > rect.bottom;
+
+  if (outside) closeWish();
+});
+
 renderMemories();
+renderWishes();
 refreshRemoteMemories();

@@ -57,3 +57,31 @@ on storage.objects
 for insert
 to anon
 with check (bucket_id = 'lulu-memories');
+
+create table if not exists public.wishes (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  author text check (author is null or char_length(author) <= 80),
+  message text not null check (char_length(message) between 1 and 500),
+  mood text check (mood is null or char_length(mood) <= 40),
+  color text,
+  rotation numeric default 0
+);
+
+create index if not exists wishes_created_at_idx on public.wishes (created_at desc);
+
+alter table public.wishes enable row level security;
+
+drop policy if exists "Anyone can read wishes" on public.wishes;
+create policy "Anyone can read wishes"
+on public.wishes
+for select
+to anon
+using (true);
+
+drop policy if exists "Anyone can add wishes" on public.wishes;
+create policy "Anyone can add wishes"
+on public.wishes
+for insert
+to anon
+with check (true);

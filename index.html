@@ -12,7 +12,9 @@
       <a class="brand" href="#home">For Lulu</a>
       <nav class="nav-actions" aria-label="Primary navigation">
         <a href="#film">Memory film</a>
+        <a href="#wishes">Future wishes</a>
         <button class="ghost-button" data-open-upload type="button">Add memory</button>
+        <button class="ghost-button" data-open-wish type="button">Write wish</button>
       </nav>
     </header>
 
@@ -25,6 +27,7 @@
           <div class="hero-actions">
             <a class="primary-button" href="#film">Enter memory film</a>
             <button class="secondary-button" data-open-upload type="button">Add a memory</button>
+            <button class="secondary-button" data-open-wish type="button">Write a wish</button>
           </div>
         </div>
 
@@ -33,15 +36,15 @@
             <article class="preview-frame frame-one">
               <span class="frame-index">01</span>
               <div>
-                <strong>First real frame</strong>
-                <p>The film begins when a teammate leaves the first real memory.</p>
+                <strong>Gallery corridor</strong>
+                <p>Memories float like exhibition pieces in a sunlit passage.</p>
               </div>
             </article>
             <article class="preview-frame frame-two">
               <span class="frame-index">02</span>
               <div>
-                <strong>Cutout specimen</strong>
-                <p>Uploaded photos become quiet floating keepsakes beside the story.</p>
+                <strong>Future wall</strong>
+                <p>Notes gather softly, each one a small wish for what comes next.</p>
               </div>
             </article>
           </div>
@@ -54,9 +57,17 @@
       <section class="film-section" id="film" aria-labelledby="film-title">
         <div class="section-heading">
           <p>Memory film</p>
-          <h2 id="film-title">A quiet sequence of shared days.</h2>
+          <h2 id="film-title">A sunlit corridor of shared days.</h2>
         </div>
         <div class="film-track" id="memoryTrack" aria-live="polite"></div>
+      </section>
+
+      <section class="wish-section" id="wishes" aria-labelledby="wishes-title">
+        <div class="section-heading">
+          <p>Future wishes</p>
+          <h2 id="wishes-title">A wall of small notes for the road ahead.</h2>
+        </div>
+        <div class="wish-wall" id="wishWall" aria-live="polite"></div>
       </section>
     </main>
 
@@ -75,12 +86,12 @@
           <input name="author" autocomplete="name" required placeholder="e.g. Yuki" />
         </label>
         <label>
-          Memory title
-          <input name="title" required placeholder="e.g. The night before launch" />
+          Memory title <span>Optional</span>
+          <input name="title" placeholder="e.g. The night before launch" />
         </label>
         <label>
-          Message
-          <textarea name="message" required rows="5" placeholder="Write one specific thing you want lulu to remember."></textarea>
+          Message <span>Optional</span>
+          <textarea name="message" rows="5" placeholder="Write one specific thing you want lulu to remember."></textarea>
         </label>
         <div class="form-grid">
           <label>
@@ -100,6 +111,38 @@
           </label>
         </div>
         <button class="primary-button full" type="submit">Generate memory frame</button>
+      </form>
+    </dialog>
+
+    <dialog class="upload-dialog wish-dialog" id="wishDialog" aria-labelledby="wish-title">
+      <form id="wishForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p>Future wishes</p>
+            <h2 id="wish-title">Leave a note for lulu</h2>
+          </div>
+          <button class="icon-button" data-close-wish type="button" aria-label="Close wish dialog">×</button>
+        </div>
+
+        <label>
+          Your name <span>Optional</span>
+          <input name="author" autocomplete="name" placeholder="e.g. Yuki" />
+        </label>
+        <label>
+          Wish
+          <textarea name="message" required rows="5" placeholder="Write a future blessing, a tiny reminder, or something you hope lulu carries forward."></textarea>
+        </label>
+        <label>
+          Mood
+          <select name="mood">
+            <option>New journey</option>
+            <option>Keep shining</option>
+            <option>Stay in touch</option>
+            <option>Grow freely</option>
+            <option>All the best</option>
+          </select>
+        </label>
+        <button class="primary-button full" type="submit">Pin this wish</button>
       </form>
     </dialog>
 
